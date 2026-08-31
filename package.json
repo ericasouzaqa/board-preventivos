@@ -12,22 +12,11 @@
     "productName": "Painel de Qualidade Preventiva",
     "files": ["index.html", "main.js"],
     "win": {
-      "target": "nsis",
-      "icon": "icon.ico"
-    },
-    "mac": {
-      "target": "dmg",
-      "icon": "icon.icns"
-    },
-    "linux": {
-      "target": "AppImage",
-      "icon": "icon.png"
+      "target": "nsis"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "icon.ico",
-      "uninstallerIcon": "icon.ico"
+      "allowToChangeInstallationDirectory": true
     }
   },
   "devDependencies": {
