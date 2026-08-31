@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Qualidade Preventiva</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0F1720;
+    --panel: #16212C;
+    --panel-alt: #1C2A38;
+    --border: #24333F;
+    --text: #E7EDF3;
+    --text-dim: #8FA1B3;
+    --prevented: #4DD9B5;
+    --incident: #FF6B6B;
+    --neutral: #F2B84B;
+    --prevented-glow: rgba(77,217,181,0.15);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 32px 20px 60px;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(77,217,181,.06), transparent 40%),
+      radial-gradient(circle at 85% 10%, rgba(255,107,107,.05), transparent 40%),
+      var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+  }
+
+  .wrap { max-width: 980px; margin: auto; }
+  .hidden { display: none !important; }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--prevented);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--prevented);
+    box-shadow: 0 0 8px var(--prevented);
+  }
+  h1 { font-size: 32px; font-weight: 700; margin: 0 0 18px; letter-spacing: -.01em; }
+
+  /* Navegação */
+  .tabs { display: flex; gap: 6px; margin-bottom: 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 13.5px;
+    padding: 10px 4px;
+    margin-right: 20px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color .15s, border-color .15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--prevented); border-bottom-color: var(--prevented); }
+
+  /* Hero */
+  .hero {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    padding: 26px 28px;
+    background: linear-gradient(135deg, var(--panel), var(--panel-alt));
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+    flex-wrap: wrap;
+  }
+  .hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 100% 0%, var(--prevented-glow), transparent 55%);
+    pointer-events: none;
+  }
+  .hero-main { display: flex; align-items: flex-end; gap: 16px; }
+  .hero-ratio {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 56px;
+    font-weight: 500;
+    color: var(--prevented);
+    line-height: 1;
+  }
+  .hero-ratio span { font-size: 26px; color: var(--text-dim); }
+  .hero-label { color: var(--text-dim); font-size: 13.5px; line-height: 1.5; padding-bottom: 6px; max-width: 220px; }
+  .hero-label strong { color: var(--text); font-weight: 600; }
+  .hero-split { display: flex; gap: 24px; margin-left: auto; }
+  .hero-chip { text-align: center; }
+  .hero-chip b { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 500; }
+  .hero-chip span { display: block; font-size: 11px; color: var(--text-dim); margin-top: 2px; text-transform: uppercase; letter-spacing: .05em; }
+
+  /* Dropzone */
+  .dropzone {
+    border: 1.5px dashed var(--border);
+    border-radius: 14px;
+    padding: 22px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: var(--panel);
+    margin-bottom: 24px;
+    transition: border-color .2s, background .2s;
+    flex-wrap: wrap;
+    cursor: pointer;
+  }
+  .dropzone.drag { border-color: var(--prevented); background: var(--panel-alt); }
+  .dz-left { display: flex; align-items: center; gap: 14px; }
+  .dz-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--panel-alt);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+  }
+  .dz-text b { display: block; font-size: 14.5px; font-weight: 600; }
+  .dz-text span { display: block; font-size: 12.5px; color: var(--text-dim); margin-top: 2px; font-family: 'IBM Plex Mono', monospace; }
+  #fileInput { display: none; }
+
+  /* Botões */
+  .btn {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 13.5px;
+    border: none;
+    border-radius: 9px;
+    padding: 11px 18px;
+    cursor: pointer;
+    transition: transform .12s, opacity .12s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: var(--prevented); color: #0B1712; }
+  .btn-primary:hover { opacity: .9; }
+  .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--incident); border-color: var(--incident); }
+  .btn-outline { background: transparent; color: var(--prevented); border: 1px solid var(--prevented); }
+  .btn-outline:hover { background: var(--prevented-glow); }
+  .btn-sm { padding: 8px 14px; font-size: 12.5px; }
+
+  #status { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text-dim); min-height: 16px; margin-top: 2px; }
+
+  /* Painéis */
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+  .panel h2 {
+    font-size: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 0 0 6px;
+    font-weight: 500;
+  }
+  .panel .hint { font-size: 12.5px; color: var(--text-dim); margin: 0 0 18px; line-height: 1.5; }
+
+  /* Classificação de etiquetas */
+  .tag-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+  .tag-name { font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+  .tag-count { color: var(--text-dim); font-size: 11.5px; margin-left: 8px; }
+  select.cat-select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  select.cat-select:focus { outline: 2px solid var(--prevented); }
+  .mapping-actions { display: flex; gap: 10px; margin-top: 18px; }
+
+  /* Grid de resumo */
+  .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; }
+
+  /* Cards de resumo */
+  .cards { display: flex; flex-direction: column; gap: 12px; }
+  .card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+  }
+  .card .dot { width: 9px; height: 9px; border-radius: 50%; margin-right: 10px; flex-shrink: 0; }
+  .card.prev .dot { background: var(--prevented); box-shadow: 0 0 6px var(--prevented); }
+  .card.inc  .dot { background: var(--incident);  box-shadow: 0 0 6px var(--incident); }
+  .card.neu  .dot { background: var(--neutral);   box-shadow: 0 0 6px var(--neutral); }
+  .card-label { display: flex; align-items: center; font-size: 13.5px; color: var(--text-dim); }
+  .card-value { font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 500; }
+
+  /* Gráfico */
+  .chart-wrap { position: relative; height: 220px; }
+  canvas { max-height: 220px; }
+  .empty { text-align: center; color: var(--text-dim); font-size: 13px; padding: 40px 10px; font-family: 'IBM Plex Mono', monospace; }
+
+  /* Tabela de cards */
+  .details-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    margin-bottom: 14px;
+  }
+  .details-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-dim); cursor: pointer; }
+  .checkbox-row input { accent-color: var(--prevented); width: 15px; height: 15px; cursor: pointer; }
+
+  .cycle-filter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 4px 8px;
+  }
+  .cycle-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    line-height: 1;
+    transition: color .12s, background .12s;
+  }
+  .cycle-btn:hover { color: var(--text); background: var(--border); }
+  .cycle-label { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text); min-width: 100px; text-align: center; }
+
+  table.card-list { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.card-list th {
+    text-align: left;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-dim);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  table.card-list th:hover { color: var(--text); }
+  table.card-list th .sort-arrow { opacity: .4; margin-left: 4px; font-size: 10px; }
+  table.card-list th.sorted .sort-arrow { opacity: 1; color: var(--prevented); }
+  table.card-list td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.card-list tr:last-child td { border-bottom: none; }
+  .id-cell { font-family: 'IBM Plex Mono', monospace; color: var(--text-dim); white-space: nowrap; }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-family: 'IBM Plex Mono', monospace; }
+  .badge.prev { background: rgba(77,217,181,.15); color: var(--prevented); }
+  .badge.inc  { background: rgba(255,107,107,.15); color: var(--incident); }
+  .badge.neu  { background: rgba(242,184,75,.15);  color: var(--neutral); }
+
+  /* Histórico */
+  .sprint-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .sprint-card:hover { border-color: var(--prevented); }
+  .sprint-meta { flex: 1; min-width: 0; }
+  .sprint-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sprint-info { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--text-dim); display: flex; gap: 16px; flex-wrap: wrap; }
+  .sprint-info span b { color: var(--text); }
+  .sprint-del {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    opacity: .5;
+    transition: opacity .15s, color .15s;
+  }
+  .sprint-del:hover { opacity: 1; color: var(--incident); }
+
+  /* Modelo */
+  .modelo-block { background: var(--panel-alt); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 12px; }
+  .modelo-block h3 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-dim);
+    margin: 0 0 10px;
+    font-weight: 500;
+  }
+  .tag-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag-chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 4px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-dim);
+  }
+  .tag-chip.required { border-color: var(--prevented); color: var(--prevented); }
+
+  /* Sobre */
+  .sobre-block { background: var(--panel-alt); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; margin-bottom: 12px; }
+  .sobre-block h3 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-dim);
+    margin: 0 0 10px;
+    font-weight: 500;
+  }
+  .sobre-block p { font-size: 13.5px; color: var(--text-dim); line-height: 1.7; margin: 0; }
+
+  /* Responsividade */
+  @media (max-width: 680px) {
+    .grid { grid-template-columns: 1fr; }
+    .hero-split { margin-left: 0; }
+    h1 { font-size: 24px; }
+    .hero-ratio { font-size: 42px; }
+    table.card-list { display: block; overflow-x: auto; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn, .dropzone { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Cultura de Prevenção</div>
+  <h1>Painel de Qualidade Preventiva</h1>
+
+  <div class="tabs" role="tablist">
+    <button class="tab-btn active" id="tabBtnPainel"    onclick="mostrarAba('painel')">Painel</button>
+    <button class="tab-btn"        id="tabBtnHistorico" onclick="mostrarAba('historico')">Histórico</button>
+    <button class="tab-btn"        id="tabBtnModelo"    onclick="mostrarAba('modelo')">Modelo</button>
+    <button class="tab-btn"        id="tabBtnSobre"     onclick="mostrarAba('sobre')">Sobre</button>
+  </div>
+
+  <!-- ══ ABA: PAINEL ══ -->
+  <div id="abaPainel">
+
+    <div class="hero hidden" id="heroBox">
+      <div class="hero-main">
+        <div class="hero-ratio" id="heroRatio">—<span>%</span></div>
+        <div class="hero-label"><strong>dos cards preventivos</strong> já foram entregues</div>
+      </div>
+      <div class="hero-split">
+        <div class="hero-chip"><b id="heroPrevTotal">0</b><span>Preventivos</span></div>
+        <div class="hero-chip"><b id="heroPrevEntregues">0</b><span>Entregues</span></div>
+      </div>
+    </div>
+
+    <div class="dropzone" id="dropzone" tabindex="0">
+      <div class="dz-left">
+        <div class="dz-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4DD9B5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div class="dz-text">
+          <b>Arraste o arquivo aqui</b>
+          <span id="fileName">CSV ou XLSX — clique para selecionar</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary" id="btnAnalisar" onclick="event.stopPropagation();analisarArquivo()" disabled>Analisar</button>
+        <button class="btn btn-ghost"   onclick="event.stopPropagation();limparAtual()">Limpar</button>
+      </div>
+    </div>
+    <div id="status"></div>
+
+    <div class="panel hidden" id="mappingPanel" style="margin-bottom:24px;">
+      <h2>Classificar etiquetas</h2>
+      <p class="hint">Diga o que cada etiqueta representa — o painel é calculado a partir disso.</p>
+      <div id="tagList"></div>
+      <div class="mapping-actions">
+        <button class="btn btn-primary" onclick="aplicarClassificacao()">Aplicar e gerar painel</button>
+        <button class="btn btn-ghost" id="btnCancelarMapping" onclick="cancelarMapping()">Cancelar</button>
+      </div>
+    </div>
+
+    <div id="dashboard" class="hidden">
+      <div class="grid">
+        <div class="panel">
+          <h2>Resumo da sprint</h2>
+          <div class="cards">
+            <div class="card" style="border-left:3px solid var(--text-dim);">
+              <div class="card-label"><span class="dot" style="background:var(--text-dim);"></span>Total de cards</div>
+              <div class="card-value" id="totalSprintCard">0</div>
+            </div>
+            <div class="card prev">
+              <div class="card-label"><span class="dot"></span>Preventivos</div>
+              <div class="card-value" id="totalPrev">0</div>
+            </div>
+            <div class="card inc">
+              <div class="card-label"><span class="dot"></span>Incidentes</div>
+              <div class="card-value" id="totalInc">0</div>
+            </div>
+            <div class="card neu">
+              <div class="card-label"><span class="dot"></span><span id="labelNeu">Tasks</span></div>
+              <div class="card-value" id="totalNeu">0</div>
+            </div>
+          </div>
+          <button class="btn btn-outline btn-sm" style="margin-top:16px;width:100%;" onclick="editarClassificacao()">Editar classificação de etiquetas</button>
+        </div>
+        <div class="panel">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <h2 style="margin:0;">Distribuição da sprint</h2>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text-dim);" id="totalSprint">0 cards</span>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="meuGrafico"></canvas>
+            <div class="empty hidden" id="emptyState">Nenhum dado processado ainda.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:20px;">
+        <div class="details-head">
+          <h2 style="margin:0;">Cards</h2>
+          <div class="details-controls">
+            <div class="cycle-filter">
+              <button class="cycle-btn" onclick="ciclarFiltro(-1)">&#8593;</button>
+              <span class="cycle-label" id="cycleLabel">Todos</span>
+              <button class="cycle-btn" onclick="ciclarFiltro(1)">&#8595;</button>
+            </div>
+            <label class="checkbox-row">
+              <input type="checkbox" id="toggleLista" onchange="renderLista()">
+              Mostrar cards (nº, título, responsável)
+            </label>
+          </div>
+        </div>
+        <div id="listaWrap" class="hidden">
+          <table class="card-list" id="cardTable">
+            <thead>
+              <tr>
+                <th onclick="sortTable('id')"          data-col="id">Nº <span class="sort-arrow">↕</span></th>
+                <th onclick="sortTable('titulo')"      data-col="titulo">Título <span class="sort-arrow">↕</span></th>
+                <th onclick="sortTable('responsavel')" data-col="responsavel">Responsável <span class="sort-arrow">↕</span></th>
+                <th onclick="sortTable('categoria')"   data-col="categoria">Categoria <span class="sort-arrow">↕</span></th>
+              </tr>
+            </thead>
+            <tbody id="listaBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div><!-- fim abaPainel -->
+
+  <!-- ══ ABA: HISTÓRICO ══ -->
+  <div id="abaHistorico" class="hidden">
+    <div class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+        <div>
+          <h2 style="margin:0 0 4px;">Sprints importadas</h2>
+          <p style="margin:0;font-size:12.5px;color:var(--text-dim);">Cada arquivo importado fica salvo aqui. Clique em <strong style="color:var(--text);">Abrir board</strong> para visualizar os dados daquela sprint.</p>
+        </div>
+      </div>
+      <div id="listaHistorico">
+        <div class="empty">Nenhuma sprint importada ainda.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ABA: MODELO ══ -->
+  <div id="abaModelo" class="hidden">
+    <div class="panel">
+      <h2>Modelo de importação</h2>
+
+      <div class="modelo-block">
+        <h3>Formatos aceitos</h3>
+        <div class="tag-chips">
+          <span class="tag-chip">CSV</span>
+          <span class="tag-chip">XLSX</span>
+        </div>
+      </div>
+
+      <div class="modelo-block">
+        <h3>Colunas reconhecidas</h3>
+        <div class="tag-chips" id="colunasChips"></div>
+        <p style="font-size:12px;color:var(--text-dim);margin:10px 0 0;font-family:'IBM Plex Mono',monospace;">
+          Coluna obrigatória: <span style="color:var(--prevented);">ID da issue</span>
+        </p>
+      </div>
+
+      <div style="margin-top:16px;">
+        <button class="btn btn-outline btn-sm" onclick="baixarModelo()">Baixar CSV de exemplo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ABA: SOBRE ══ -->
+  <div id="abaSobre" class="hidden">
+    <div class="panel">
+      <h2>Sobre</h2>
+
+      <div class="sobre-block">
+        <h3>O que é</h3>
+        <p>O Painel de Qualidade Preventiva auxilia na análise de issues para identificar riscos e padrões de defeitos antes da entrega.</p>
+      </div>
+
+      <div class="sobre-block">
+        <h3>Como funciona</h3>
+        <p>A ferramenta importa dados, realiza classificações, apresenta indicadores e permite acompanhar análises salvas no histórico.</p>
+      </div>
+
+      <div class="sobre-block">
+        <h3>Formatos aceitos</h3>
+        <div class="tag-chips">
+          <span class="tag-chip">CSV</span>
+          <span class="tag-chip">XLSX</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<input type="file" id="fileInput" accept=".csv,.xlsx">
+
+<script>
+// ─── CONFIGURAÇÃO ─────────────────────────────────────────────────────────────
+const CONFIG = {
+  COLUNA_TAGS:        'Etiquetas',
+  COLUNA_ID:          'ID da issue',
+  COLUNA_TITULO:      'Resumo',
+  COLUNA_RESPONSAVEL: 'Atribuído',
+  COLUNA_RESOLVIDA:   'Resolvida',
+  LABEL_NEUTRO:       'Tasks',
+};
+
+const KEY_MAPPING = 'qp_mapping';
+const KEY_SPRINTS = 'qp_sprints';
+const KEY_CURRENT = 'qp_current';
+
+let currentRows       = [];
+let pendingRows       = [];
+let pendingName       = '';
+let currentMapping    = {};
+let currentClassified = [];
+let sortCol           = null;
+let sortAsc           = true;
+const FILTROS         = ['Todos', 'Preventivo', 'Incidente', 'Não classificado'];
+let filtroIdx         = 0;
+
+// ─── Store ────────────────────────────────────────────────────────────────────
+const Store = {
+  get(k)      { try { const v = localStorage.getItem(k); return v !== null ? {value: v} : null; } catch(e) { return null; } },
+  set(k, v)   { try { localStorage.setItem(k, v); } catch(e) {} },
+  del(k)      { try { localStorage.removeItem(k); } catch(e) {} },
+  getSprints(){ try { const v = localStorage.getItem(KEY_SPRINTS); return v ? JSON.parse(v) : []; } catch(e) { return []; } },
+  setSprints(arr) { try { localStorage.setItem(KEY_SPRINTS, JSON.stringify(arr)); } catch(e) {} }
+};
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  if (typeof Chart === 'undefined' || typeof XLSX === 'undefined' || typeof Papa === 'undefined') {
+    document.body.innerHTML = '<div style="max-width:520px;margin:80px auto;padding:28px;background:#16212C;border:1px solid #24333F;border-radius:14px;font-family:sans-serif;color:#E7EDF3;"><h2 style="margin-top:0;color:#FF6B6B;">Bibliotecas não carregadas</h2><p style="color:#8FA1B3;line-height:1.6;">Verifique sua conexão e recarregue a página. Seus dados não foram perdidos.</p></div>';
+    return;
+  }
+
+  // Preenche chips de colunas no modelo
+  const chips = document.getElementById('colunasChips');
+  [CONFIG.COLUNA_ID, CONFIG.COLUNA_TITULO, CONFIG.COLUNA_RESPONSAVEL, CONFIG.COLUNA_TAGS, CONFIG.COLUNA_RESOLVIDA]
+    .forEach(c => {
+      const s = document.createElement('span');
+      s.className = 'tag-chip' + (c === CONFIG.COLUNA_ID ? ' required' : '');
+      s.textContent = c;
+      chips.appendChild(s);
+    });
+
+  document.getElementById('labelNeu').textContent = CONFIG.LABEL_NEUTRO;
+
+  const m = Store.get(KEY_MAPPING);
+  if (m) { try { currentMapping = JSON.parse(m.value); } catch(e) {} }
+
+  const cur = Store.get(KEY_CURRENT);
+  if (cur) {
+    const sprint = Store.getSprints().find(s => s.id === cur.value);
+    if (sprint) { currentRows = sprint.rows; renderDashboard(); }
+  }
+});
+
+// ─── Abas ─────────────────────────────────────────────────────────────────────
+function mostrarAba(nome) {
+  ['painel', 'historico', 'modelo', 'sobre'].forEach(id => {
+    const cap = id[0].toUpperCase() + id.slice(1);
+    document.getElementById('aba' + cap).classList.toggle('hidden', id !== nome);
+    document.getElementById('tabBtn' + cap).classList.toggle('active', id === nome);
+  });
+  if (nome === 'historico') renderHistorico();
+}
+
+// ─── Upload ───────────────────────────────────────────────────────────────────
+const dropzone  = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const fileName  = document.getElementById('fileName');
+const btnAnal   = document.getElementById('btnAnalisar');
+const statusEl  = document.getElementById('status');
+
+dropzone.addEventListener('click', e => { if (!e.target.closest('button')) fileInput.click(); });
+fileInput.addEventListener('change', updateLabel);
+['dragover', 'dragenter'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('drag'); }));
+['dragleave', 'drop']    .forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('drag'); }));
+dropzone.addEventListener('drop', e => { if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; updateLabel(); } });
+
+function updateLabel() {
+  if (fileInput.files.length) { fileName.textContent = fileInput.files[0].name; btnAnal.disabled = false; }
+  else { fileName.textContent = 'CSV ou XLSX — clique para selecionar'; btnAnal.disabled = true; }
+}
+
+function analisarArquivo() {
+  const file = fileInput.files[0];
+  if (!file) return;
+  pendingName = file.name;
+  statusEl.innerText = 'Lendo arquivo...';
+  btnAnal.disabled = true;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'xlsx' || ext === 'xls') {
+    const r = new FileReader();
+    r.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, {type: 'binary'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        processarLinhas(XLSX.utils.sheet_to_json(ws, {defval: ''}));
+      } catch(err) { statusEl.innerText = 'Erro ao ler o XLSX.'; btnAnal.disabled = false; }
+    };
+    r.onerror = () => { statusEl.innerText = 'Erro ao ler o arquivo.'; btnAnal.disabled = false; };
+    r.readAsBinaryString(file);
+  } else {
+    Papa.parse(file, {
+      header: true, skipEmptyLines: true,
+      complete: r => processarLinhas(r.data),
+      error: () => { statusEl.innerText = 'Erro ao ler o CSV.'; btnAnal.disabled = false; }
+    });
+  }
+}
+
+function processarLinhas(data) {
+  if (data.length > 0 && !Object.prototype.hasOwnProperty.call(data[0], CONFIG.COLUNA_TAGS)) {
+    statusEl.innerText = "Coluna '" + CONFIG.COLUNA_TAGS + "' não encontrada. Verifique o arquivo.";
+    btnAnal.disabled = false; return;
+  }
+  pendingRows = data;
+  abrirMapeamento(pendingRows, currentMapping);
+  statusEl.innerText = pendingRows.length + ' cards encontrados. Classifique as etiquetas abaixo.';
+  btnAnal.disabled = false;
+}
+
+// ─── Mapeamento ───────────────────────────────────────────────────────────────
+function extrairTagsUnicas(rows) {
+  const map = new Map();
+  rows.forEach(row => {
+    (row[CONFIG.COLUNA_TAGS] || '').split(',').map(t => t.trim()).filter(Boolean).forEach(t => {
+      const k = t.toLowerCase(); if (!map.has(k)) map.set(k, t);
+    });
+  });
+  return map;
+}
+
+function abrirMapeamento(rows, mappingAtual) {
+  const tagMap = extrairTagsUnicas(rows);
+  const container = document.getElementById('tagList');
+  container.innerHTML = '';
+  tagMap.forEach((label, key) => {
+    const count = rows.filter(r => (r[CONFIG.COLUNA_TAGS] || '').toLowerCase().split(',').map(t => t.trim()).includes(key)).length;
+    const atual = mappingAtual[key] || 'ignorar';
+    const div = document.createElement('div');
+    div.className = 'tag-row';
+    div.innerHTML =
+      '<div><span class="tag-name">' + label + '</span><span class="tag-count">' + count + ' card' + (count === 1 ? '' : 's') + '</span></div>' +
+      '<select class="cat-select" data-tag="' + key + '">' +
+      '<option value="ignorar"'     + (atual === 'ignorar'    ? ' selected' : '') + '> Ignorar / ' + CONFIG.LABEL_NEUTRO + '</option>' +
+      '<option value="preventivo"'  + (atual === 'preventivo' ? ' selected' : '') + '>Preventivo</option>' +
+      '<option value="incidente"'   + (atual === 'incidente'  ? ' selected' : '') + '>Incidente</option>' +
+      '</select>';
+    container.appendChild(div);
+  });
+  document.getElementById('mappingPanel').classList.remove('hidden');
+  document.getElementById('btnCancelarMapping').classList.toggle('hidden', currentRows.length === 0);
+  document.getElementById('mappingPanel').scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+function aplicarClassificacao() {
+  const novo = {};
+  document.querySelectorAll('#tagList select').forEach(s => { novo[s.dataset.tag] = s.value; });
+  currentRows    = pendingRows.length ? pendingRows : currentRows;
+  currentMapping = Object.assign({}, currentMapping, novo);
+  Store.set(KEY_MAPPING, JSON.stringify(currentMapping));
+  salvarSprintNoHistorico(pendingName || 'Sprint', currentRows, currentMapping);
+  document.getElementById('mappingPanel').classList.add('hidden');
+  pendingRows = [];
+  renderDashboard();
+  statusEl.innerText = 'Painel atualizado com ' + currentRows.length + ' cards.';
+}
+
+function cancelarMapping() { document.getElementById('mappingPanel').classList.add('hidden'); pendingRows = []; }
+function editarClassificacao() { abrirMapeamento(currentRows, currentMapping); }
+
+// ─── Histórico ────────────────────────────────────────────────────────────────
+function salvarSprintNoHistorico(name, rows, mapping) {
+  const classified = rows.map(r => Object.assign({}, r, {tipo: classificar(r[CONFIG.COLUNA_TAGS], mapping)}));
+  const prev      = classified.filter(r => r.tipo === 'Preventivo').length;
+  const inc       = classified.filter(r => r.tipo === 'Incidente').length;
+  const neu       = classified.filter(r => r.tipo === 'Não classificado').length;
+  const entregues = classified.filter(r => r.tipo === 'Preventivo' && foiEntregue(r)).length;
+
+  const sprints = Store.getSprints();
+  const idx     = sprints.findIndex(s => s.name === name);
+  const record  = {
+    id:   idx >= 0 ? sprints[idx].id : 'sp_' + Date.now(),
+    name,
+    date: new Date().toLocaleDateString('pt-BR', {day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'}),
+    total: rows.length,
+    prev, inc, neu, entregues,
+    rows, mapping
+  };
+  if (idx >= 0) sprints[idx] = record; else sprints.unshift(record);
+  Store.setSprints(sprints);
+  Store.set(KEY_CURRENT, record.id);
+}
+
+function renderHistorico() {
+  const container = document.getElementById('listaHistorico');
+  const sprints   = Store.getSprints();
+  if (!sprints.length) {
+    container.innerHTML = '<div class="empty">Nenhuma sprint importada ainda.</div>';
+    return;
+  }
+  const curId = (Store.get(KEY_CURRENT) || {}).value;
+  container.innerHTML = sprints.map(s => {
+    const pct   = s.prev ? Math.round(s.entregues / s.prev * 100) : 0;
+    const ativo = s.id === curId ? 'border-color:var(--prevented);' : '';
+    return '<div class="sprint-card" style="' + ativo + '">' +
+      '<div class="sprint-meta">' +
+        '<div class="sprint-name">📄 ' + s.name + '</div>' +
+        '<div class="sprint-info">' +
+          '<span>' + s.date + '</span>' +
+          '<span><b>' + s.total + '</b> cards</span>' +
+          '<span>Prev: <b>' + s.prev + '</b></span>' +
+          '<span>Inc: <b>' + s.inc + '</b></span>' +
+          '<span>' + pct + '% entregues</span>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;align-items:center;">' +
+        '<button class="btn btn-primary btn-sm" onclick="abrirSprint(\'' + s.id + '\')">Abrir board</button>' +
+        '<button class="sprint-del" onclick="excluirSprint(\'' + s.id + '\')" title="Excluir">✕</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function abrirSprint(id) {
+  const sprint = Store.getSprints().find(s => s.id === id);
+  if (!sprint) return;
+  currentRows    = sprint.rows;
+  currentMapping = sprint.mapping;
+  Store.set(KEY_CURRENT, id);
+  mostrarAba('painel');
+  renderDashboard();
+  statusEl.innerText = 'Visualizando: ' + sprint.name;
+}
+
+function excluirSprint(id) {
+  if (!confirm('Excluir esta sprint do histórico?')) return;
+  const sprints = Store.getSprints().filter(s => s.id !== id);
+  Store.setSprints(sprints);
+  const cur = Store.get(KEY_CURRENT);
+  if (cur && cur.value === id) {
+    Store.del(KEY_CURRENT);
+    currentRows = [];
+    document.getElementById('heroBox').classList.add('hidden');
+    document.getElementById('dashboard').classList.add('hidden');
+  }
+  renderHistorico();
+}
+
+// ─── Classificação ────────────────────────────────────────────────────────────
+function classificar(raw, mapping) {
+  const tags = (raw || '').split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+  if (tags.some(t => mapping[t] === 'preventivo')) return 'Preventivo';
+  if (tags.some(t => mapping[t] === 'incidente'))  return 'Incidente';
+  return 'Não classificado';
+}
+function foiEntregue(row) { return !!(row[CONFIG.COLUNA_RESOLVIDA] || '').trim(); }
+
+// ─── Render dashboard ─────────────────────────────────────────────────────────
+function renderDashboard() {
+  currentClassified = currentRows.map(r => Object.assign({}, r, {tipo: classificar(r[CONFIG.COLUNA_TAGS], currentMapping)}));
+  const prev      = currentClassified.filter(r => r.tipo === 'Preventivo');
+  const inc       = currentClassified.filter(r => r.tipo === 'Incidente');
+  const neu       = currentClassified.filter(r => r.tipo === 'Não classificado');
+  const entregues = prev.filter(foiEntregue);
+  const pct       = prev.length ? Math.round(entregues.length / prev.length * 100) : 0;
+  const total     = prev.length + inc.length + neu.length;
+
+  document.getElementById('heroBox').classList.remove('hidden');
+  document.getElementById('heroRatio').innerHTML = pct + '<span>%</span>';
+  document.getElementById('heroPrevTotal').innerText    = prev.length;
+  document.getElementById('heroPrevEntregues').innerText = entregues.length;
+  document.getElementById('totalPrev').innerText         = prev.length;
+  document.getElementById('totalInc').innerText          = inc.length;
+  document.getElementById('totalNeu').innerText          = neu.length;
+  document.getElementById('labelNeu').textContent        = CONFIG.LABEL_NEUTRO;
+  document.getElementById('totalSprint').innerText       = total + ' card' + (total === 1 ? '' : 's');
+  document.getElementById('totalSprintCard').innerText   = total;
+  document.getElementById('emptyState').classList.toggle('hidden', total > 0);
+
+  const ctx = document.getElementById('meuGrafico').getContext('2d');
+  if (window.meuChart) window.meuChart.destroy();
+  window.meuChart = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: ['Preventivos', 'Incidentes', CONFIG.LABEL_NEUTRO],
+      datasets: [{
+        data: [prev.length, inc.length, neu.length],
+        backgroundColor: ['#4DD9B5', '#FF6B6B', '#F2B84B'],
+        borderColor: '#16212C',
+        borderWidth: 3,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {color: '#8FA1B3', font: {family: "'IBM Plex Mono',monospace", size: 11.5}, padding: 16, usePointStyle: true, pointStyle: 'circle'}
+        },
+        tooltip: {
+          backgroundColor: '#1C2A38', titleColor: '#E7EDF3', bodyColor: '#E7EDF3',
+          borderColor: '#24333F', borderWidth: 1, padding: 10,
+          titleFont: {family: "'Space Grotesk',sans-serif"},
+          bodyFont: {family: "'IBM Plex Mono',monospace"}
+        }
+      }
+    }
+  });
+
+  filtroIdx = 0; atualizarCycleLabel();
+  document.getElementById('dashboard').classList.remove('hidden');
+  renderLista();
+}
+
+// ─── Filtro cíclico ───────────────────────────────────────────────────────────
+function ciclarFiltro(dir) {
+  filtroIdx = (filtroIdx + dir + FILTROS.length) % FILTROS.length;
+  atualizarCycleLabel(); renderLista();
+}
+function atualizarCycleLabel() {
+  const labels = ['Todos', 'Preventivos', 'Incidentes', CONFIG.LABEL_NEUTRO];
+  document.getElementById('cycleLabel').textContent = labels[filtroIdx];
+}
+
+// ─── Ordenação ────────────────────────────────────────────────────────────────
+function sortTable(col) {
+  if (sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; }
+  document.querySelectorAll('#cardTable th').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.col === col);
+    const a = th.querySelector('.sort-arrow');
+    if (a) a.textContent = th.dataset.col === col ? (sortAsc ? '↑' : '↓') : '↕';
+  });
+  renderLista();
+}
+
+// ─── Render tabela ────────────────────────────────────────────────────────────
+function renderLista() {
+  const show = document.getElementById('toggleLista').checked;
+  document.getElementById('listaWrap').classList.toggle('hidden', !show);
+  if (!show) return;
+  const filtroValor = FILTROS[filtroIdx];
+  let linhas = filtroValor === 'Todos' ? currentClassified.slice() : currentClassified.filter(r => r.tipo === filtroValor);
+  if (sortCol) {
+    const colMap = {
+      id:          r => (r[CONFIG.COLUNA_ID]          || '').toLowerCase(),
+      titulo:      r => (r[CONFIG.COLUNA_TITULO]      || '').toLowerCase(),
+      responsavel: r => (r[CONFIG.COLUNA_RESPONSAVEL] || '').toLowerCase(),
+      categoria:   r => r.tipo.toLowerCase()
+    };
+    const fn = colMap[sortCol] || (() => '');
+    linhas.sort((a, b) => sortAsc ? fn(a).localeCompare(fn(b), 'pt') : fn(b).localeCompare(fn(a), 'pt'));
+  }
+  const bClass = {'Preventivo': 'prev', 'Incidente': 'inc', 'Não classificado': 'neu'};
+  document.getElementById('listaBody').innerHTML = linhas.map(r =>
+    '<tr>' +
+    '<td class="id-cell">' + (r[CONFIG.COLUNA_ID]          || '—') + '</td>' +
+    '<td>'                 + (r[CONFIG.COLUNA_TITULO]       || '—') + '</td>' +
+    '<td>'                 + (r[CONFIG.COLUNA_RESPONSAVEL]  || '—') + '</td>' +
+    '<td><span class="badge ' + (bClass[r.tipo] || 'neu') + '">' + (r.tipo === 'Não classificado' ? CONFIG.LABEL_NEUTRO : r.tipo) + '</span></td>' +
+    '</tr>'
+  ).join('') || '<tr><td colspan="4" style="color:var(--text-dim);text-align:center;padding:20px;">Nenhum card nessa categoria.</td></tr>';
+}
+
+// ─── Ações ────────────────────────────────────────────────────────────────────
+function limparAtual() {
+  if (!confirm('Limpar o board atual? O histórico não é apagado.')) return;
+  currentRows = []; currentClassified = [];
+  Store.del(KEY_CURRENT);
+  document.getElementById('heroBox').classList.add('hidden');
+  document.getElementById('dashboard').classList.add('hidden');
+  statusEl.innerText = '';
+}
+
+function baixarModelo() {
+  const cols  = [CONFIG.COLUNA_ID, CONFIG.COLUNA_TITULO, CONFIG.COLUNA_RESPONSAVEL, CONFIG.COLUNA_TAGS, CONFIG.COLUNA_RESOLVIDA];
+  const linhas = [
+    cols,
+    ['SC-4405', 'Ajustes de campos para o relatório', 'larissa.oliveira', 'Prevenção', '28 ago. 2026 10:54'],
+    ['SC-4410', 'Corrigir falha no cálculo de frete', 'joao.silva', 'HOM - Regressão', '']
+  ].map(l => l.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + linhas], {type: 'text/csv;charset=utf-8;'}));
+  a.download = 'modelo-importacao.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+</script>
+</body>
+</html>
