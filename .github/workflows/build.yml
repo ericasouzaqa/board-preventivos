@@ -1,1 +1,41 @@
+name: Build e Release
 
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Gerar executável
+        run: npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publicar Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: "Painel de Qualidade Preventiva v1.0.${{ github.run_number }}"
+          files: dist/*.exe
+          body: |
+            ## Painel de Qualidade Preventiva
+
+            Baixe o instalador abaixo e execute no Windows.
+
+            **Não é necessário instalar Node.js ou nenhuma dependência.**
+            O app funciona 100% offline após instalado.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
