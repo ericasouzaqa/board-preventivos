@@ -19,6 +19,7 @@ Acesse a aba [Releases](https://github.com/ericasouzaqa/board-preventivos/releas
 2. Classifique as etiquetas (Preventivo / Incidente / Ignorar)
 3. Visualize os indicadores e gráficos gerados
 4. Acompanhe análises salvas no histórico
+
 ## Formatos aceitos
  
 - CSV
