@@ -1,10 +1,17 @@
+
+
+Readme · MD
 # Painel de Qualidade Preventiva
  
 Ferramenta para análise de issues com foco em qualidade preventiva e prevenção de bugs.
  
-## O que é
+## Acesso web
  
-Auxilia na análise de issues para identificar riscos e padrões de defeitos antes da entrega.
+[https://ericasouzaqa.github.io/board-preventivos](https://ericasouzaqa.github.io/board-preventivos)
+ 
+## Download desktop
+ 
+Acesse a aba [Releases](https://github.com/ericasouzaqa/board-preventivos/releases) e baixe o instalador `.exe`.
  
 ## Como usar
  
@@ -25,7 +32,3 @@ Auxilia na análise de issues para identificar riscos e padrões de defeitos ant
 | Atribuído | Não |
 | Etiquetas | Não |
 | Resolvida | Não |
- 
-## Publicação
-Acesse: [https://ericasouzaqa.github.io/board-preventivos](https://ericasouzaqa.github.io/board-preventivos)
- 
