@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'index.html'
+      - 'main.js'
+      - 'package.json'
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   build:
