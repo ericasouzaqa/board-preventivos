@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none';">
 <title>Painel de Qualidade Preventiva</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -601,6 +602,19 @@ let sortAsc           = true;
 const FILTROS         = ['Todos', 'Preventivo', 'Incidente', 'Não classificado'];
 let filtroIdx         = 0;
 
+// ─── Sanitização ──────────────────────────────────────────────────────────────
+// Escapa caracteres HTML de qualquer dado vindo do arquivo importado (CSV/XLSX)
+// antes de inserir via innerHTML, prevenindo XSS por conteúdo malicioso no arquivo.
+function escapeHtml(value) {
+  return String(value === undefined || value === null ? '' : value).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[ch]));
+}
+
 // ─── Store ────────────────────────────────────────────────────────────────────
 const Store = {
   get(k)      { try { const v = localStorage.getItem(k); return v !== null ? {value: v} : null; } catch(e) { return null; } },
@@ -726,9 +740,9 @@ function abrirMapeamento(rows, mappingAtual) {
     const div = document.createElement('div');
     div.className = 'tag-row';
     div.innerHTML =
-      '<div><span class="tag-name">' + label + '</span><span class="tag-count">' + count + ' card' + (count === 1 ? '' : 's') + '</span></div>' +
-      '<select class="cat-select" data-tag="' + key + '">' +
-      '<option value="ignorar"'     + (atual === 'ignorar'    ? ' selected' : '') + '> Ignorar / ' + CONFIG.LABEL_NEUTRO + '</option>' +
+      '<div><span class="tag-name">' + escapeHtml(label) + '</span><span class="tag-count">' + count + ' card' + (count === 1 ? '' : 's') + '</span></div>' +
+      '<select class="cat-select" data-tag="' + escapeHtml(key) + '">' +
+      '<option value="ignorar"'     + (atual === 'ignorar'    ? ' selected' : '') + '> Ignorar / ' + escapeHtml(CONFIG.LABEL_NEUTRO) + '</option>' +
       '<option value="preventivo"'  + (atual === 'preventivo' ? ' selected' : '') + '>Preventivo</option>' +
       '<option value="incidente"'   + (atual === 'incidente'  ? ' selected' : '') + '>Incidente</option>' +
       '</select>';
@@ -791,7 +805,7 @@ function renderHistorico() {
     const ativo = s.id === curId ? 'border-color:var(--prevented);' : '';
     return '<div class="sprint-card" style="' + ativo + '">' +
       '<div class="sprint-meta">' +
-        '<div class="sprint-name">📄 ' + s.name + '</div>' +
+        '<div class="sprint-name">📄 ' + escapeHtml(s.name) + '</div>' +
         '<div class="sprint-info">' +
           '<span>' + s.date + '</span>' +
           '<span><b>' + s.total + '</b> cards</span>' +
@@ -942,10 +956,10 @@ function renderLista() {
   const bClass = {'Preventivo': 'prev', 'Incidente': 'inc', 'Não classificado': 'neu'};
   document.getElementById('listaBody').innerHTML = linhas.map(r =>
     '<tr>' +
-    '<td class="id-cell">' + (r[CONFIG.COLUNA_ID]          || '—') + '</td>' +
-    '<td>'                 + (r[CONFIG.COLUNA_TITULO]       || '—') + '</td>' +
-    '<td>'                 + (r[CONFIG.COLUNA_RESPONSAVEL]  || '—') + '</td>' +
-    '<td><span class="badge ' + (bClass[r.tipo] || 'neu') + '">' + (r.tipo === 'Não classificado' ? CONFIG.LABEL_NEUTRO : r.tipo) + '</span></td>' +
+    '<td class="id-cell">' + escapeHtml(r[CONFIG.COLUNA_ID]          || '—') + '</td>' +
+    '<td>'                 + escapeHtml(r[CONFIG.COLUNA_TITULO]       || '—') + '</td>' +
+    '<td>'                 + escapeHtml(r[CONFIG.COLUNA_RESPONSAVEL]  || '—') + '</td>' +
+    '<td><span class="badge ' + (bClass[r.tipo] || 'neu') + '">' + escapeHtml(r.tipo === 'Não classificado' ? CONFIG.LABEL_NEUTRO : r.tipo) + '</span></td>' +
     '</tr>'
   ).join('') || '<tr><td colspan="4" style="color:var(--text-dim);text-align:center;padding:20px;">Nenhum card nessa categoria.</td></tr>';
 }

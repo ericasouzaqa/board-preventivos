@@ -1,6 +1,9 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
+// Único arquivo local que a janela pode carregar/navegar.
+const INDEX_PATH = path.join(__dirname, 'index.html');
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
@@ -10,9 +13,21 @@ function createWindow() {
     title: 'Painel de Qualidade Preventiva',
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      sandbox: true
     }
   });
+
+  // Bloqueia navegação para fora do arquivo local da aplicação
+  // (mitiga navegação externa em caso de conteúdo malicioso injetado).
+  win.webContents.on('will-navigate', (event, url) => {
+    if (url !== 'file://' + INDEX_PATH) {
+      event.preventDefault();
+    }
+  });
+
+  // Bloqueia a criação de novas janelas/abas via window.open ou target=_blank.
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 
   win.loadFile('index.html');
   win.setMenuBarVisibility(false);
