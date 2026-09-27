@@ -1,6 +1,6 @@
 {
   "name": "board-preventivos",
-  "version": "2.0.0",
+  "version": "1.0.5",
   "description": "Board de Cards Preventivos — registro e métricas de qualidade preventiva.",
   "main": "main.js",
   "scripts": {
@@ -10,7 +10,13 @@
   "build": {
     "appId": "com.qualidade.board-preventivos",
     "productName": "Board de Cards Preventivos",
-    "files": ["index.html", "main.js", "preload.js", "renderer.js", "styles.css"],
+    "files": [
+      "index.html",
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "styles.css"
+    ],
     "win": {
       "target": "nsis"
     },
