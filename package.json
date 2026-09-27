@@ -1,16 +1,16 @@
 {
-  "name": "painel-qualidade-preventiva",
-  "version": "1.0.0",
-  "description": "Painel para análise de issues com foco em qualidade preventiva e prevenção de bugs.",
+  "name": "board-preventivos",
+  "version": "2.0.0",
+  "description": "Board de Cards Preventivos — registro e métricas de qualidade preventiva.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder"
   },
   "build": {
-    "appId": "com.qualidade.painel-preventivo",
-    "productName": "Painel de Qualidade Preventiva",
-    "files": ["index.html", "main.js"],
+    "appId": "com.qualidade.board-preventivos",
+    "productName": "Board de Cards Preventivos",
+    "files": ["index.html", "main.js", "preload.js", "renderer.js", "styles.css"],
     "win": {
       "target": "nsis"
     },
